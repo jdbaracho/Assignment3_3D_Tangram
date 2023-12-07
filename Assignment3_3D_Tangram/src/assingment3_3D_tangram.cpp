@@ -51,7 +51,10 @@ private:
 
 void MyApp::createMeshes() {
     std::string mesh_dir = "./assets/models/";
-    std::string mesh_file = "cube-v.obj";
+    //std::string mesh_file = "cube.obj";
+    //std::string mesh_file = "triangular-prism.obj";
+    std::string mesh_file = "parallelepiped.obj";
+    //std::string mesh_file = "cube-v.obj";
     // std::string mesh_file = "cube-vn.obj";
     // std::string mesh_file = "cube-vtn.obj";
     // std::string mesh_file = "cube-vtn-2.obj";
@@ -185,10 +188,7 @@ void MyApp::cursorCallback(GLFWwindow* win, double xpos, double ypos) {
 }
 
 void MyApp::mouseButtonCallback(GLFWwindow* win, int button, int action, int mods) {
-    //std::cout << "button: " << button << " " << action << " " << mods << std::endl;
-
     leftClick = button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS;
-    std::cout << "leftClick: " << leftClick << std::endl;
 }
 
 void MyApp::scrollCallback(GLFWwindow* win, double xoffset, double yoffset) {
