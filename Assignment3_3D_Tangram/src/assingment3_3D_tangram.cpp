@@ -18,6 +18,36 @@
 
 #include "../mgl/mgl.hpp"
 
+
+///////////////////////////////////////////////////////////////////////// SCENE NODE CLASS
+
+class SceneNode {
+public:
+    glm::mat4 transform;
+    std::vector<SceneNode*> children;
+    mgl::Mesh* mesh;
+
+    SceneNode(mgl::Mesh* mesh) : mesh(mesh) {}
+
+    void addChild(SceneNode* child) {
+        children.push_back(child);
+    }
+
+    void draw(GLint modelMatrixId, const glm::mat4& parentTransform = glm::mat4(1.0f)) {
+        glm::mat4 totalTransform = parentTransform * transform;
+
+        if (mesh) {
+
+            glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, glm::value_ptr(totalTransform));
+            mesh->draw();
+        }
+
+        for (SceneNode* child : children) {
+            child->draw(modelMatrixId, totalTransform);
+        }
+    }
+};
+
 ////////////////////////////////////////////////////////////////////////// MYAPP
 
 class MyApp : public mgl::App {
@@ -140,29 +170,35 @@ void MyApp::createCamera() {
 }
 
 void MyApp::updateCamera() {
-    const float sensitivity = 0.01f; // Adjust sensitivity as needed
+    //const float sensitivity = 0.01f; // Adjust sensitivity as needed
 
-    // Update yaw (horizontal rotation)
-    Camera->yawCamera(-deltaX * sensitivity);
+    //// Update yaw (horizontal rotation)
+    //Camera->yawCamera(-deltaX * sensitivity);
 
-    // Update pitch (vertical rotation)
-    Camera->pitchCamera(-deltaY * sensitivity);
+    //// Update pitch (vertical rotation)
+    //Camera->pitchCamera(-deltaY * sensitivity);
 
-    deltaX = 0.0f;
-    deltaY = 0.0f;
+    //deltaX = 0.0f;
+    //deltaY = 0.0f;
 
-    // Get the updated rotation angles
-    float newYaw, newPitch;
-    Camera->getEulerAngles(newYaw, newPitch);
+    //// Get the updated rotation angles
+    //float newYaw, newPitch;
+    //Camera->getEulerAngles(newYaw, newPitch);
 
-    // Calculate the new view matrix
-    glm::mat4 T = glm::translate(glm::vec3(0.0f, 0.0f, -glm::length(glm::vec3(5.0f, 5.0f, 5.0f))));
-    glm::mat4 R = glm::rotate(glm::mat4(1.0f), -newYaw, glm::vec3(0.0f, 1.0f, 0.0f));
-    R = glm::rotate(R, -newPitch, glm::vec3(1.0f, 0.0f, 0.0f));
+    //// Create quaternions for yaw and pitch
+    //glm::quat qYaw = glm::angleAxis(newYaw, glm::vec3(0.0f, 1.0f, 0.0f));
+    //glm::quat qPitch = glm::angleAxis(newPitch, glm::vec3(1.0f, 0.0f, 0.0f));
 
-    Camera->setViewMatrix(T * R);
+    //// Combine quaternions for total rotation
+    //glm::quat qTotal = qYaw * qPitch;
 
-  /*  glm::quat qX = glm::angleAxis(deltaX / 100, XX);
+    //// Calculate the new view matrix
+    //glm::mat4 T = glm::translate(glm::vec3(0.0f, 0.0f, -glm::length(glm::vec3(5.0f, 5.0f, 5.0f))));
+    //glm::mat4 R = glm::toMat4(qTotal);
+
+    //Camera->setViewMatrix(T * R);
+
+    glm::quat qX = glm::angleAxis(deltaX / 100, XX);
     glm::quat qY = glm::angleAxis(deltaY / 100, YY);
 
     deltaX = 0.0f;
@@ -173,7 +209,7 @@ void MyApp::updateCamera() {
     glm::mat4 T = glm::translate(glm::vec3(0.0f, 0.0f, -glm::length(glm::vec3(5.0f, 5.0f, 5.0f))));
     glm::mat4 R = glm::toMat4(q);
 
-    Camera->setViewMatrix(T * R);*/
+    Camera->setViewMatrix(T * R);
 }
 
 /////////////////////////////////////////////////////////////////////////// DRAW
@@ -193,55 +229,69 @@ void MyApp::drawScene() {
     float hypotenuse = sqrt(2*pow(side, 2));
     float triangleHeight = hypotenuse/2;
 
-    Shaders->bind();
+    // Create a root node for the scene
+    SceneNode root(nullptr);
+    root.transform = I;
 
-    // draw triangles
-    glUniformMatrix4fv(ModelMatrixId, 1, GL_FALSE, glm::value_ptr(I));
-    triangleMesh->draw();
+    // Draw triangles
+    SceneNode triangle1(triangleMesh);
+    triangle1.transform = I;
+    root.addChild(&triangle1);
 
+    SceneNode triangle2(triangleMesh);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 0, 1));
-    T = glm::translate(glm::vec3(-triangleHeight-hypotenuse, triangleHeight, 0.0f));
+    T = glm::translate(glm::vec3(-triangleHeight - hypotenuse, triangleHeight, 0.0f));
     M = T * R;
-    glUniformMatrix4fv(ModelMatrixId, 1, GL_FALSE, glm::value_ptr(M));
-    triangleMesh->draw();
+    triangle2.transform = M;
+    root.addChild(&triangle2);
 
+    SceneNode triangle3(triangleMesh);
     S = glm::scale(glm::vec3(sqrt(2), sqrt(2), 1));
     R = glm::rotate(glm::radians(135.0f), glm::vec3(0, 0, 1));
-    T = glm::translate(glm::vec3(-2.0f*hypotenuse, side * sqrt(2), 0.0f));
+    T = glm::translate(glm::vec3(-2.0f * hypotenuse, side * sqrt(2), 0.0f));
     M = T * R * S;
-    glUniformMatrix4fv(ModelMatrixId, 1, GL_FALSE, glm::value_ptr(M));
-    triangleMesh->draw();
+    triangle3.transform = M;
+    root.addChild(&triangle3);
 
+    SceneNode triangle4(triangleMesh);
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1));
-    T = glm::translate(glm::vec3(0.0f, 2.0f*hypotenuse, 0.0f));
+    T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
     M = T * R * S;
-    glUniformMatrix4fv(ModelMatrixId, 1, GL_FALSE, glm::value_ptr(M));
-    triangleMesh->draw();
+    triangle4.transform = M;
+    root.addChild(&triangle4);
 
+    SceneNode triangle5(triangleMesh);
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(180.0f), glm::vec3(1, 0, 0));
-    T = glm::translate(glm::vec3(0.0f, 2.0f*hypotenuse, 0.0f));
+    T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
     M = T * R * S;
-    glUniformMatrix4fv(ModelMatrixId, 1, GL_FALSE, glm::value_ptr(M));
-    triangleMesh->draw();
+    triangle5.transform = M;
+    root.addChild(&triangle5);
 
 
     // draw square
+    SceneNode square(squareMesh);
     R = glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-triangleHeight, triangleHeight, 0.0f));
     M = T * R;
-    glUniformMatrix4fv(ModelMatrixId, 1, GL_FALSE, glm::value_ptr(M));
-    squareMesh->draw();
+    square.transform = M;
+    root.addChild(&square);
 
 
     // draw parallelogram
+    SceneNode parallelogram(parallelogramMesh);
     R = glm::rotate(glm::radians(-45.0f), glm::vec3(0, 0, 1));
-    T = glm::translate(glm::vec3(-1.5f*hypotenuse, triangleHeight, 0.0f));
+    T = glm::translate(glm::vec3(-1.5f * hypotenuse, triangleHeight, 0.0f));
     M = T * R;
-    glUniformMatrix4fv(ModelMatrixId, 1, GL_FALSE, glm::value_ptr(M));
-    parallelogramMesh->draw();
+    parallelogram.transform = M;
+    root.addChild(&parallelogram);
 
+
+    Shaders->bind();
+
+    // draw entire scene
+    root.draw(ModelMatrixId);
 
     Shaders->unbind();
 }

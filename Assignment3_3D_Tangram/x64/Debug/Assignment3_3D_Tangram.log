@@ -1,7 +1,7 @@
 ﻿  assingment3_3D_tangram.cpp
-C:\Users\henri\OneDrive\Ambiente de Trabalho\CGJ\Labs\Lab4 - Assignment 3 - Tangram 3D\Assignment3_3D_Tangram\Assignment3_3D_Tangram\src\assingment3_3D_tangram.cpp(193,22): warning C4244: 'inicializando': conversão de 'double' para 'float', possível perda de dados
-C:\Users\henri\OneDrive\Ambiente de Trabalho\CGJ\Labs\Lab4 - Assignment 3 - Tangram 3D\Assignment3_3D_Tangram\Assignment3_3D_Tangram\src\assingment3_3D_tangram.cpp(268,24): warning C4244: '+=': conversão de 'double' para 'float', possível perda de dados
-C:\Users\henri\OneDrive\Ambiente de Trabalho\CGJ\Labs\Lab4 - Assignment 3 - Tangram 3D\Assignment3_3D_Tangram\Assignment3_3D_Tangram\src\assingment3_3D_tangram.cpp(269,24): warning C4244: '+=': conversão de 'double' para 'float', possível perda de dados
+C:\Users\henri\OneDrive\Ambiente de Trabalho\CGJ\Labs\Lab4 - Assignment 3 - Tangram 3D\Assignment3_3D_Tangram\Assignment3_3D_Tangram\src\assingment3_3D_tangram.cpp(229,22): warning C4244: 'inicializando': conversão de 'double' para 'float', possível perda de dados
+C:\Users\henri\OneDrive\Ambiente de Trabalho\CGJ\Labs\Lab4 - Assignment 3 - Tangram 3D\Assignment3_3D_Tangram\Assignment3_3D_Tangram\src\assingment3_3D_tangram.cpp(318,24): warning C4244: '+=': conversão de 'double' para 'float', possível perda de dados
+C:\Users\henri\OneDrive\Ambiente de Trabalho\CGJ\Labs\Lab4 - Assignment 3 - Tangram 3D\Assignment3_3D_Tangram\Assignment3_3D_Tangram\src\assingment3_3D_tangram.cpp(319,24): warning C4244: '+=': conversão de 'double' para 'float', possível perda de dados
   Assignment3_3D_Tangram.vcxproj -> C:\Users\henri\OneDrive\Ambiente de Trabalho\CGJ\Labs\Lab4 - Assignment 3 - Tangram 3D\Assignment3_3D_Tangram\x64\Debug\Assignment3_3D_Tangram.exe
   dependencies\glew\bin\Release\x64\glew32.dll
   1 File(s) copied
