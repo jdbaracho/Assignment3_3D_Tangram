@@ -32,6 +32,11 @@ class Camera {
   void setViewMatrix(const glm::mat4 &viewmatrix);
   glm::mat4 getProjectionMatrix();
   void setProjectionMatrix(const glm::mat4 &projectionmatrix);
+  float yaw = 0.0f;
+  float pitch = 0.0f;
+  void yawCamera(float angle);
+  void pitchCamera(float angle);
+  void getEulerAngles(float& yaw, float& pitch);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -48,5 +48,18 @@ void Camera::setProjectionMatrix(const glm::mat4 &projectionmatrix) {
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
+void Camera::yawCamera(float angle) {
+    yaw += angle;
+}
+
+void Camera::pitchCamera(float angle) {
+    pitch += angle;
+}
+
+void Camera::getEulerAngles(float& yaw, float& pitch) {
+    yaw = this->yaw;
+    pitch = this->pitch;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 }  // namespace mgl
