@@ -21,29 +21,45 @@
 ///////////////////////////////////////////////////////////////////////// SCENE NODE CLASS
 
 class SceneNode {
+private:
+    int positionId = 0;
+    glm::mat4 S[2];
+    glm::mat4 R[2];
+    glm::mat4 T[2];
+
+    mgl::ShaderProgram* shaders = nullptr;
+
 public:
     glm::mat4 transform;
     std::vector<SceneNode*> children;
     mgl::Mesh* mesh;
 
-    SceneNode(mgl::Mesh* mesh) : mesh(mesh) {}
+    SceneNode(mgl::Mesh* mesh, mgl::ShaderProgram* shaders) : shaders(shaders), mesh(mesh) {}
 
     void addChild(SceneNode* child) {
         children.push_back(child);
     }
 
-    void draw(GLint modelMatrixId, const glm::mat4& parentTransform = glm::mat4(1.0f)) {
-        glm::mat4 totalTransform = parentTransform * transform;
+    void draw(GLint modelMatrixId, const glm::mat4& parentTransform = glm::mat4(1.0f), mgl::ShaderProgram* parentShader = nullptr) {
+        glm::mat4 totalTransform = parentTransform * T[positionId] * R[positionId] * S[positionId];
 
         if (mesh) {
-
+            if (!shaders) { shaders = parentShader;  }
+            shaders->bind();
             glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, glm::value_ptr(totalTransform));
             mesh->draw();
+            shaders->unbind();
         }
 
         for (SceneNode* child : children) {
-            child->draw(modelMatrixId, totalTransform);
+            child->draw(modelMatrixId, totalTransform, shaders);
         }
+    }
+
+    void addPosition(int pos, glm::mat4 s, glm::mat4 r, glm::mat4 t) {
+        S[pos] = s;
+        R[pos] = r;
+        T[pos] = t;
     }
 };
 
@@ -169,70 +185,69 @@ void MyApp::drawScene() {
     float triangleHeight = hypotenuse/2;
 
     // Create a root node for the scene
-    SceneNode root(nullptr);
-    root.transform = I;
+    SceneNode root(nullptr, Shaders);
+    root.addPosition(0, I, I, I);
+    root.addPosition(1, I, I, I);
 
     // Draw triangles
-    SceneNode triangle1(triangleMesh);
-    triangle1.transform = I;
+    SceneNode triangle1(triangleMesh, Shaders);
+    triangle1.addPosition(0, I, I, I);
+    triangle1.addPosition(1, I, I, I);
     root.addChild(&triangle1);
 
-    SceneNode triangle2(triangleMesh);
+    SceneNode triangle2(triangleMesh, Shaders);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-triangleHeight - hypotenuse, triangleHeight, 0.0f));
-    M = T * R;
-    triangle2.transform = M;
+    triangle2.addPosition(0, I, R, T);
+    triangle2.addPosition(1, I, R, T);
     root.addChild(&triangle2);
 
-    SceneNode triangle3(triangleMesh);
+    SceneNode triangle3(triangleMesh, Shaders);
     S = glm::scale(glm::vec3(sqrt(2), sqrt(2), 1));
     R = glm::rotate(glm::radians(135.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-2.0f * hypotenuse, side * sqrt(2), 0.0f));
-    M = T * R * S;
-    triangle3.transform = M;
+    triangle3.addPosition(0, S, R, T);
+    triangle3.addPosition(1, S, R, T);
     root.addChild(&triangle3);
 
-    SceneNode triangle4(triangleMesh);
+    SceneNode triangle4(triangleMesh, Shaders);
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
-    M = T * R * S;
-    triangle4.transform = M;
+    triangle4.addPosition(0, S, R, T);
+    triangle4.addPosition(1, S, R, T);
     root.addChild(&triangle4);
 
-    SceneNode triangle5(triangleMesh);
+    SceneNode triangle5(triangleMesh, Shaders);
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(180.0f), glm::vec3(1, 0, 0));
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
-    M = T * R * S;
-    triangle5.transform = M;
+    triangle5.addPosition(0, S, R, T);
+    triangle5.addPosition(1, S, R, T);
     root.addChild(&triangle5);
 
 
     // draw square
-    SceneNode square(squareMesh);
+    SceneNode square(squareMesh, Shaders);
     R = glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-triangleHeight, triangleHeight, 0.0f));
-    M = T * R;
-    square.transform = M;
+    square.addPosition(0, I, R, T);
+    square.addPosition(1, I, R, T);
     root.addChild(&square);
 
 
     // draw parallelogram
-    SceneNode parallelogram(parallelogramMesh);
+    SceneNode parallelogram(parallelogramMesh, Shaders);
     R = glm::rotate(glm::radians(-45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-1.5f * hypotenuse, triangleHeight, 0.0f));
     M = T * R;
     parallelogram.transform = M;
+    parallelogram.addPosition(0, I, R, T);
+    parallelogram.addPosition(1, I, R, T);
     root.addChild(&parallelogram);
-
-
-    Shaders->bind();
 
     // draw entire scene
     root.draw(ModelMatrixId);
-
-    Shaders->unbind();
 }
 
 ////////////////////////////////////////////////////////////////////// CALLBACKS
