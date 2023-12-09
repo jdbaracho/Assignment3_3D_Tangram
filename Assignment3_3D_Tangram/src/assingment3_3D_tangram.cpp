@@ -10,9 +10,12 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/transform.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <vector>
+#include <iostream>
 
 
 #include "../mgl/mgl.hpp"
@@ -22,27 +25,24 @@
 
 class SceneNode {
 private:
-    int positionId = 0;
-    glm::mat4 S[2];
-    glm::mat4 R[2];
-    glm::mat4 T[2];
+    glm::mat4 M[3]; // three model matrices: 0 - box position, 1 - mid-animation position, and 2 - tangram shape position
 
     mgl::ShaderProgram* shaders = nullptr;
 
 public:
-    glm::mat4 transform;
+    static int positionId;
     glm::vec3 color;
     std::vector<SceneNode*> children;
     mgl::Mesh* mesh;
 
-    SceneNode(mgl::Mesh* mesh, mgl::ShaderProgram* shaders) : shaders(shaders), mesh(mesh) {}
+    SceneNode(mgl::Mesh* mesh, mgl::ShaderProgram* shaders) : shaders(shaders), mesh(mesh) { }
 
     void addChild(SceneNode* child) {
         children.push_back(child);
     }
 
-    void draw(GLint modelMatrixId, GLint colorId, const glm::mat4& parentTransform = glm::mat4(1.0f), mgl::ShaderProgram* parentShader = nullptr) {
-        glm::mat4 totalTransform = parentTransform * T[positionId] * R[positionId] * S[positionId];
+    void draw(GLint modelMatrixId, GLint colorId, const glm::mat4& parentTransform = glm::mat4(1.0f), mgl::ShaderProgram* parentShader = nullptr, bool animate = false) {
+        glm::mat4 totalTransform = parentTransform * (animate ? M[1] : M[SceneNode::positionId]);
 
         if (mesh) {
             if (!shaders) { shaders = parentShader;  }
@@ -58,12 +58,51 @@ public:
         }
     }
 
-    void addPosition(int pos, glm::mat4 s, glm::mat4 r, glm::mat4 t) {
-        S[pos] = s;
-        R[pos] = r;
-        T[pos] = t;
+    bool animate(GLint modelMatrixId, GLint colorId, bool paused, float p, float d) {
+        bool ended = true;
+        if (mesh) {
+            if (!paused) {
+                glm::mat4 initialMatrixModel = M[SceneNode::positionId == 0 ? 2 : 0];
+                glm::mat4 finalMatrixModel = M[SceneNode::positionId];
+                float interpolation = glm::clamp(p / d, 0.0f, 1.0f);
+                ended = interpolation == 1.0f;
+                float easedInterpolation = glm::smoothstep(0.0f, 1.0f, interpolation);
+
+                // Linear interpolation for translation
+                glm::vec3 initialTranslation = glm::vec3(M[1][3]);
+                glm::vec3 finalTranslation = glm::vec3(finalMatrixModel[3]);
+                glm::vec3 interpolatedTranslation = glm::mix(initialTranslation, finalTranslation, easedInterpolation);
+
+                //Linear interpolation for rotation
+                glm::quat initialRotation = glm::quat_cast(M[1]);
+                glm::quat finalRotation = glm::quat_cast(finalMatrixModel);
+                glm::quat interpolatedRotation = glm::lerp(initialRotation, finalRotation, easedInterpolation);
+
+                // Update the model matrix
+                M[1] = glm::translate(glm::mat4(1.0f), interpolatedTranslation) * glm::mat4_cast(interpolatedRotation);
+
+                draw(modelMatrixId, colorId, glm::mat4(1.0f), shaders, true);
+            }
+            else {
+                ended = false;
+                draw(modelMatrixId, colorId, glm::mat4(1.0f), shaders, true);
+            }
+        }
+
+        // animate/draw whole scene
+        for (SceneNode* child : children) {
+            ended = child->animate(modelMatrixId, colorId, paused, p, d);
+        }
+
+        return ended;
+    }
+
+    void addPosition(int pos, glm::mat4 m) {
+        M[pos] = m;
     }
 };
+
+int SceneNode::positionId = 0;
 
 ////////////////////////////////////////////////////////////////////////// MYAPP
 
@@ -80,6 +119,9 @@ public:
 private:
     mgl::ShaderProgram* Shaders = nullptr;
 
+    //  root node for the scene
+    SceneNode root = SceneNode(nullptr, nullptr);
+
     const GLuint UBO_BP[2] = { 0, 1 };
     mgl::OrbitCamera* Cameras[2] = { nullptr, nullptr };
     int cameraId = 1;
@@ -89,12 +131,23 @@ private:
     mgl::Mesh* Mesh = nullptr;
     std::vector<mgl::Mesh*> meshes;  // Vector to store multiple meshes
 
+    float animationDuration = 3.0f; 
+    float currentTime = 0.0f;
+    bool isAnimating = false;
+    bool isPaused = false;
+
     bool pressedKeys[GLFW_KEY_LAST];
 
     void createMeshes();
     void createShaderPrograms();
     void createCamera();
     void drawScene();
+
+    // Animation functions
+    void startAnimation();
+    void pauseAnimation();
+    void stopAnimation();
+    void updateAnimation(float deltaTime);
 };
 
 ///////////////////////////////////////////////////////////////////////// MESHES
@@ -173,6 +226,33 @@ void MyApp::createCamera() {
     Cameras[1]->setPerspectiveMatrix(30.0f, 800.0f / 600.0f, 1.0f, 10.0f);
 }
 
+///////////////////////////////////////////////////////////////////////// ANIMATION
+
+void MyApp::startAnimation() {
+    isAnimating = true;
+    isPaused = false;
+}
+
+void MyApp::pauseAnimation() {
+    isPaused = true;
+}
+
+void MyApp::stopAnimation() {
+    currentTime = 0.0f;
+    isAnimating = false;
+    isPaused = false;
+}
+
+void MyApp::updateAnimation(float deltaTime) {
+    if (!isPaused) {
+        currentTime += deltaTime;
+    }
+    bool ended = root.animate(ModelMatrixId, ColorId, isPaused, currentTime, animationDuration);
+    if (ended) {
+        stopAnimation();
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////// DRAW
 
 glm::mat4 I(1.0f);
@@ -190,23 +270,42 @@ void MyApp::drawScene() {
     float hypotenuse = sqrt(2*pow(side, 2));
     float triangleHeight = hypotenuse/2;
 
-    // Create a root node for the scene
-    SceneNode root(nullptr, Shaders);
-    root.addPosition(0, I, I, I);
-    root.addPosition(1, I, I, I);
+    root = SceneNode(nullptr, Shaders);
+    M = I;
+    root.addPosition(0, M);
+    root.addPosition(2, M);
 
     // Draw triangles
     SceneNode triangle1(triangleMesh, Shaders);
-    triangle1.addPosition(0, I, I, I);
-    triangle1.addPosition(1, I, I, I);
+    triangle1.addPosition(0, M); // set box matrix model
+    if (SceneNode::positionId == 0) {
+        triangle1.addPosition(1, M); // set animation matrix equal to initial position matrix model
+    }
+    R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1));
+    T = glm::translate(glm::vec3(0.0f, side, -side));
+    M = T * R;
+    triangle1.addPosition(2, M); // set tangram shape matrix model
+    if (SceneNode::positionId == 2) {
+        triangle1.addPosition(1, M); // set animation matrix equal to tangram shape matrix model
+    }
     triangle1.color = glm::vec3(0.0f, 0.62f, 0.65f);
     root.addChild(&triangle1);
 
     SceneNode triangle2(triangleMesh, Shaders);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-triangleHeight - hypotenuse, triangleHeight, 0.0f));
-    triangle2.addPosition(0, I, R, T);
-    triangle2.addPosition(1, I, R, T);
+    M = T * R;
+    triangle2.addPosition(0, M);
+    if (SceneNode::positionId == 0) {
+        triangle2.addPosition(1, M);
+    }
+    R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::radians(-45.0f), glm::vec3(0, 0, 1));
+    T = glm::translate(glm::vec3(0.0f, 0.0f, side));
+    M = T * R;
+    triangle2.addPosition(2, M);
+    if (SceneNode::positionId == 2) {
+        triangle2.addPosition(1, M);
+    }
     triangle2.color = glm::vec3(0.92f, 0.28f, 0.15f);
     root.addChild(&triangle2);
 
@@ -214,8 +313,18 @@ void MyApp::drawScene() {
     S = glm::scale(glm::vec3(sqrt(2), sqrt(2), 1));
     R = glm::rotate(glm::radians(135.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-2.0f * hypotenuse, side * sqrt(2), 0.0f));
-    triangle3.addPosition(0, S, R, T);
-    triangle3.addPosition(1, S, R, T);
+    M = T * R * S;
+    triangle3.addPosition(0, M);
+    if (SceneNode::positionId == 0) {
+        triangle3.addPosition(1, M);
+    }
+    R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
+    T = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
+    M = T * R * S;
+    triangle3.addPosition(2, M);
+    if (SceneNode::positionId == 2) {
+        triangle3.addPosition(1, M);
+    }
     triangle3.color = glm::vec3(0.43f, 0.23f, 0.75f);
     root.addChild(&triangle3);
 
@@ -223,8 +332,18 @@ void MyApp::drawScene() {
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
-    triangle4.addPosition(0, S, R, T);
-    triangle4.addPosition(1, S, R, T);
+    M = T * R * S;
+    triangle4.addPosition(0, M);
+    if (SceneNode::positionId == 0) {
+        triangle4.addPosition(1, M);
+    }
+    R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
+    T = glm::translate(glm::vec3(0.0f, side, 2.0f*hypotenuse));
+    M = T * R * S;
+    triangle4.addPosition(2, M);
+    if (SceneNode::positionId == 2) {
+        triangle4.addPosition(1, M);
+    }
     triangle4.color = glm::vec3(0.80f, 0.05f, 0.4f);
     root.addChild(&triangle4);
 
@@ -232,8 +351,18 @@ void MyApp::drawScene() {
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(180.0f), glm::vec3(1, 0, 0));
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
-    triangle5.addPosition(0, S, R, T);
-    triangle5.addPosition(1, S, R, T);
+    M = T * R * S;
+    triangle5.addPosition(0, M);
+    if (SceneNode::positionId == 0) {
+        triangle5.addPosition(1, M);
+    }
+    R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 0, 1));
+    T = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f * hypotenuse));
+    M = T * R * S;
+    triangle5.addPosition(2, M);
+    if (SceneNode::positionId == 2) {
+        triangle5.addPosition(1, M);
+    }
     triangle5.color = glm::vec3(0.06f, 0.51f, 0.95f);
     root.addChild(&triangle5);
 
@@ -242,8 +371,18 @@ void MyApp::drawScene() {
     SceneNode square(squareMesh, Shaders);
     R = glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-triangleHeight, triangleHeight, 0.0f));
-    square.addPosition(0, I, R, T);
-    square.addPosition(1, I, R, T);
+    M = T * R;
+    square.addPosition(0, M);
+    if (SceneNode::positionId == 0) {
+        square.addPosition(1, M);
+    }
+    R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
+    T = glm::translate(glm::vec3(0.0f, 0.0f, 2.0f * hypotenuse));
+    M = T * R;
+    square.addPosition(2, M);
+    if (SceneNode::positionId == 2) {
+        square.addPosition(1, M);
+    }
     square.color = glm::vec3(0.13f, 0.67f, 0.14f);
     root.addChild(&square);
 
@@ -253,9 +392,17 @@ void MyApp::drawScene() {
     R = glm::rotate(glm::radians(-45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-1.5f * hypotenuse, triangleHeight, 0.0f));
     M = T * R;
-    parallelogram.transform = M;
-    parallelogram.addPosition(0, I, R, T);
-    parallelogram.addPosition(1, I, R, T);
+    parallelogram.addPosition(0, M);
+    if (SceneNode::positionId == 0) {
+        parallelogram.addPosition(1, M);
+    }
+    R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
+    T = glm::translate(glm::vec3(0.0f, 0.0f, side));
+    M = T * R;
+    parallelogram.addPosition(2, M);
+    if (SceneNode::positionId == 2) {
+        parallelogram.addPosition(1, M);
+    }
     parallelogram.color = glm::vec3(0.99f, 0.55f, 0.0f);
     root.addChild(&parallelogram);
 
@@ -289,6 +436,33 @@ void MyApp::keyCallback(GLFWwindow* win, int key, int scancode, int action, int 
         case GLFW_KEY_P:
             Cameras[cameraId]->changeProjection();
             break;
+
+        case GLFW_KEY_LEFT:
+        case GLFW_KEY_RIGHT:
+            pauseAnimation();
+            break;
+        }
+    }
+    else if (pressedKeys[key]) {
+        switch (key) {
+        case GLFW_KEY_LEFT:
+            if (isAnimating or SceneNode::positionId != 0) {
+                if (SceneNode::positionId != 0 && currentTime > 0.0f) {
+                    currentTime = animationDuration - currentTime; // reverse animation time
+                }
+                SceneNode::positionId = 0;
+                startAnimation();
+            }
+            break;
+        case GLFW_KEY_RIGHT:
+            if (isAnimating or SceneNode::positionId != 2) {
+                if (SceneNode::positionId != 2 && currentTime > 0.0f) {
+                    currentTime = animationDuration - currentTime; // reverse animation time
+                }
+                SceneNode::positionId = 2;
+                startAnimation();
+            }
+            break;
         }
     }
 
@@ -300,7 +474,12 @@ void MyApp::keyCallback(GLFWwindow* win, int key, int scancode, int action, int 
 
 void MyApp::displayCallback(GLFWwindow* win, double elapsed) {
     Cameras[cameraId]->update();
-    drawScene();
+    if (isAnimating) {
+        updateAnimation(elapsed);
+    }
+    else {
+        drawScene();
+    }
 }
 
 void MyApp::cursorCallback(GLFWwindow* win, double xpos, double ypos) {
