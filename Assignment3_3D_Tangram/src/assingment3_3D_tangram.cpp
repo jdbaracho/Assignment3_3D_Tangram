@@ -3,6 +3,8 @@
 //  Loading meshes from external files
 //
 // Copyright (c) 2023 by Carlos Martinho
+// 
+// modified by João Baracho & Henrique Martins
 //
 // INTRODUCES:
 // MODEL DATA, ASSIMP, mglMesh.hpp
@@ -62,21 +64,15 @@ public:
 private:
     const GLuint UBO_BP = 0;
     mgl::ShaderProgram* Shaders = nullptr;
-    mgl::Camera* Camera = nullptr;
+    mgl::OrbitCamera* Camera = nullptr;
     GLint ModelMatrixId;
     mgl::Mesh* Mesh = nullptr;
     std::vector<mgl::Mesh*> meshes;  // Vector to store multiple meshes
-
-    bool leftClick = false;
-    double prevXpos, prevYpos;
-    float deltaX = 0.0f, deltaY = 0.0f;
 
     void createMeshes();
     void createShaderPrograms();
     void createCamera();
     void drawScene();
-
-    void updateCamera();
 };
 
 ///////////////////////////////////////////////////////////////////////// MESHES
@@ -138,78 +134,12 @@ void MyApp::createShaderPrograms() {
 
 ///////////////////////////////////////////////////////////////////////// CAMERA
 
-// Axis
-const glm::vec3 XX(0.0f, 1.0f, 0.0f);
-const glm::vec3 YY(1.0f, 0.0f, 0.0f);
-
-// Eye(5,5,5) Center(0,0,0) Up(0,1,0)
-const glm::mat4 ViewMatrix1 =
-glm::lookAt(glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-    glm::vec3(0.0f, 1.0f, 0.0f));
-
-// Eye(-5,-5,-5) Center(0,0,0) Up(0,1,0)
-const glm::mat4 ViewMatrix2 =
-glm::lookAt(glm::vec3(-5.0f, -5.0f, -5.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-    glm::vec3(0.0f, 1.0f, 0.0f));
-
-// Orthographic LeftRight(-2,2) BottomTop(-2,2) NearFar(1,10)
-const glm::mat4 ProjectionMatrix1 =
-glm::ortho(-2.0f, 2.0f, -2.0f, 2.0f, 1.0f, 10.0f);
-
-// Perspective Fovy(30) Aspect(640/480) NearZ(1) FarZ(10)
-const glm::mat4 ProjectionMatrix2 =
-glm::perspective(glm::radians(30.0f), 640.0f / 480.0f, 1.0f, 10.0f);
-
-glm::quat q = glm::angleAxis(0.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-const glm::mat4 ViewMatrix3 = glm::translate(glm::vec3(0, 0, -glm::length(glm::vec3(5.0f, 5.0f, 5.0f)))) * glm::toMat4(q);
-
 void MyApp::createCamera() {
-    Camera = new mgl::Camera(UBO_BP);
-    Camera->setViewMatrix(ViewMatrix3);
-    Camera->setProjectionMatrix(ProjectionMatrix2);
-}
-
-void MyApp::updateCamera() {
-    //const float sensitivity = 0.01f; // Adjust sensitivity as needed
-
-    //// Update yaw (horizontal rotation)
-    //Camera->yawCamera(-deltaX * sensitivity);
-
-    //// Update pitch (vertical rotation)
-    //Camera->pitchCamera(-deltaY * sensitivity);
-
-    //deltaX = 0.0f;
-    //deltaY = 0.0f;
-
-    //// Get the updated rotation angles
-    //float newYaw, newPitch;
-    //Camera->getEulerAngles(newYaw, newPitch);
-
-    //// Create quaternions for yaw and pitch
-    //glm::quat qYaw = glm::angleAxis(newYaw, glm::vec3(0.0f, 1.0f, 0.0f));
-    //glm::quat qPitch = glm::angleAxis(newPitch, glm::vec3(1.0f, 0.0f, 0.0f));
-
-    //// Combine quaternions for total rotation
-    //glm::quat qTotal = qYaw * qPitch;
-
-    //// Calculate the new view matrix
-    //glm::mat4 T = glm::translate(glm::vec3(0.0f, 0.0f, -glm::length(glm::vec3(5.0f, 5.0f, 5.0f))));
-    //glm::mat4 R = glm::toMat4(qTotal);
-
-    //Camera->setViewMatrix(T * R);
-
-    glm::quat qX = glm::angleAxis(deltaX / 100, XX);
-    glm::quat qY = glm::angleAxis(deltaY / 100, YY);
-
-    deltaX = 0.0f;
-    deltaY = 0.0f;
-
-    q = qX * qY * q;
-
-    glm::mat4 T = glm::translate(glm::vec3(0.0f, 0.0f, -glm::length(glm::vec3(5.0f, 5.0f, 5.0f))));
-    glm::mat4 R = glm::toMat4(q);
-
-    Camera->setViewMatrix(T * R);
+    Camera = new mgl::OrbitCamera(UBO_BP);
+    Camera->setViewMatrix(glm::vec3(-8.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+    Camera->setPerspectiveMatrix(30.0f, 800.0f / 600.0f, 1.0f, 10.0f);
+    //Camera->setOrthoMatrix(-2.0f, 2.0f, -2.0f, 2.0f, 1.0f, 10.0f);
 }
 
 /////////////////////////////////////////////////////////////////////////// DRAW
@@ -221,7 +151,7 @@ glm::mat4 T;
 glm::mat4 M;
 
 void MyApp::drawScene() {
-    updateCamera();
+
     mgl::Mesh* triangleMesh = meshes[0];
     mgl::Mesh* squareMesh = meshes[1];
     mgl::Mesh* parallelogramMesh = meshes[2];
@@ -304,31 +234,27 @@ void MyApp::initCallback(GLFWwindow* win) {
     createCamera();
 }
 void MyApp::windowSizeCallback(GLFWwindow* win, int winx, int winy) {
-    glViewport(0, 0, winx, winy);
-    // change projection matrices to maintain aspect ratio
+    glViewport(0, 0, 800, 600);
+    //glViewport(0, 0, 640, 480);
 }
 
-void MyApp::displayCallback(GLFWwindow* win, double elapsed) { drawScene(); }
+void MyApp::displayCallback(GLFWwindow* win, double elapsed) {
+    drawScene();
+    Camera->update();
+}
 
 void MyApp::cursorCallback(GLFWwindow* win, double xpos, double ypos) {
     //std::cout << "mouse: " << xpos << " " << ypos << std::endl;
-
-    if (leftClick) {
-
-        deltaX += xpos - prevXpos;
-        deltaY += ypos - prevYpos;
-    }
-
-    prevXpos = xpos;
-    prevYpos = ypos;
+    Camera->cursor(xpos, ypos);
 }
 
 void MyApp::mouseButtonCallback(GLFWwindow* win, int button, int action, int mods) {
-    leftClick = button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS;
+    Camera->mouseButton(button, action);
 }
 
 void MyApp::scrollCallback(GLFWwindow* win, double xoffset, double yoffset) {
-    std::cout << "scroll: " << xoffset << " " << yoffset << std::endl;
+    //std::cout << "scroll: " << xoffset << " " << yoffset << std::endl;
+    Camera->scroll(xoffset, yoffset);
 }
 
 /////////////////////////////////////////////////////////////////////////// MAIN

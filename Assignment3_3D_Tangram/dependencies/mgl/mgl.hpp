@@ -17,6 +17,7 @@
 #include "./mglConventions.hpp"
 #include "./mglError.hpp"
 #include "./mglMesh.hpp"
+#include "./mglOrbitCamera.hpp"
 #include "./mglScenegraph.hpp"
 #include "./mglShader.hpp"
 
