@@ -6,9 +6,6 @@
 // 
 // modified by João Baracho & Henrique Martins
 //
-// INTRODUCES:
-// MODEL DATA, ASSIMP, mglMesh.hpp
-//
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <glm/glm.hpp>
@@ -57,17 +54,23 @@ public:
     void initCallback(GLFWwindow* win) override;
     void displayCallback(GLFWwindow* win, double elapsed) override;
     void windowSizeCallback(GLFWwindow* win, int width, int height) override;
+    void keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods) override;
     void cursorCallback(GLFWwindow* win, double xpos, double ypos) override;
     void mouseButtonCallback(GLFWwindow* win, int button, int action, int mods) override;
     void scrollCallback(GLFWwindow* win, double xoffset, double yoffset) override;
 
 private:
-    const GLuint UBO_BP = 0;
     mgl::ShaderProgram* Shaders = nullptr;
-    mgl::OrbitCamera* Camera = nullptr;
+
+    const GLuint UBO_BP[2] = { 0, 1 };
+    mgl::OrbitCamera* Cameras[2] = { nullptr, nullptr };
+    int cameraId = 1;
+
     GLint ModelMatrixId;
     mgl::Mesh* Mesh = nullptr;
     std::vector<mgl::Mesh*> meshes;  // Vector to store multiple meshes
+
+    bool pressedKeys[GLFW_KEY_LAST];
 
     void createMeshes();
     void createShaderPrograms();
@@ -126,7 +129,7 @@ void MyApp::createShaderPrograms() {
     }
 
     Shaders->addUniform(mgl::MODEL_MATRIX);
-    Shaders->addUniformBlock(mgl::CAMERA_BLOCK, UBO_BP);
+    Shaders->addUniformBlock(mgl::CAMERA_BLOCK, UBO_BP[0]);
     Shaders->create();
 
     ModelMatrixId = Shaders->Uniforms[mgl::MODEL_MATRIX].index;
@@ -135,11 +138,17 @@ void MyApp::createShaderPrograms() {
 ///////////////////////////////////////////////////////////////////////// CAMERA
 
 void MyApp::createCamera() {
-    Camera = new mgl::OrbitCamera(UBO_BP);
-    Camera->setViewMatrix(glm::vec3(-8.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+    Cameras[0] = new mgl::OrbitCamera(UBO_BP[0], 'A');
+    Cameras[0]->setViewMatrix(glm::vec3(0.0f, 0.0f, 8.0f), glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f));
-    Camera->setPerspectiveMatrix(30.0f, 800.0f / 600.0f, 1.0f, 10.0f);
-    //Camera->setOrthoMatrix(-2.0f, 2.0f, -2.0f, 2.0f, 1.0f, 10.0f);
+    Cameras[0]->setOrthoMatrix(-2.0f, 2.0f, -2.0f, 2.0f, 1.0f, 10.0f);
+    Cameras[0]->setPerspectiveMatrix(30.0f, 800.0f / 600.0f, 1.0f, 10.0f);
+
+    Cameras[1] = new mgl::OrbitCamera(UBO_BP[0], 'B');
+    Cameras[1]->setViewMatrix(glm::vec3(-8.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+    Cameras[1]->setOrthoMatrix(-2.0f, 2.0f, -2.0f, 2.0f, 1.0f, 10.0f);
+    Cameras[1]->setPerspectiveMatrix(30.0f, 800.0f / 600.0f, 1.0f, 10.0f);
 }
 
 /////////////////////////////////////////////////////////////////////////// DRAW
@@ -238,23 +247,46 @@ void MyApp::windowSizeCallback(GLFWwindow* win, int winx, int winy) {
     //glViewport(0, 0, 640, 480);
 }
 
+void MyApp::keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods) {
+    //std::cout << "key: " << key << " " << scancode << " " << action << " " << mods << std::endl;
+    pressedKeys[key] = action != GLFW_RELEASE;
+
+    if (action == GLFW_RELEASE) {
+        switch (key) {
+        case GLFW_KEY_C:
+            cameraId = (cameraId + 1) % 2;
+            Cameras[cameraId]->activate();
+            break;
+
+        case GLFW_KEY_P:
+            Cameras[cameraId]->changeProjection();
+            break;
+        }
+    }
+
+    //if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
+    //    cameraId = (cameraId + 1) % 2;
+    //    Cameras[cameraId]->activate();
+    //}
+}
+
 void MyApp::displayCallback(GLFWwindow* win, double elapsed) {
+    Cameras[cameraId]->update();
     drawScene();
-    Camera->update();
 }
 
 void MyApp::cursorCallback(GLFWwindow* win, double xpos, double ypos) {
     //std::cout << "mouse: " << xpos << " " << ypos << std::endl;
-    Camera->cursor(xpos, ypos);
+    Cameras[cameraId]->cursor(xpos, ypos);
 }
 
 void MyApp::mouseButtonCallback(GLFWwindow* win, int button, int action, int mods) {
-    Camera->mouseButton(button, action);
+    Cameras[cameraId]->mouseButton(win, button, action);
 }
 
 void MyApp::scrollCallback(GLFWwindow* win, double xoffset, double yoffset) {
     //std::cout << "scroll: " << xoffset << " " << yoffset << std::endl;
-    Camera->scroll(xoffset, yoffset);
+    Cameras[cameraId]->scroll(xoffset, yoffset);
 }
 
 /////////////////////////////////////////////////////////////////////////// MAIN
@@ -263,7 +295,7 @@ int main(int argc, char* argv[]) {
     mgl::Engine& engine = mgl::Engine::getInstance();
     engine.setApp(new MyApp());
     engine.setOpenGL(4, 6);
-    engine.setWindow(800, 600, "Mesh Loader", 0, 1);
+    engine.setWindow(800, 600, "Assignment 3: 3D Tangram", 0, 1);
     engine.init();
     engine.run();
     exit(EXIT_SUCCESS);

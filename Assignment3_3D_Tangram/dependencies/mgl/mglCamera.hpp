@@ -3,6 +3,8 @@
 // Camera Abstraction Class
 //
 // Copyright (c)2023 by Carlos Martinho
+// 
+// modified by João Baracho & Henrique Martins
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -15,31 +17,35 @@
 
 namespace mgl {
 
-class Camera;
+	class Camera;
 
-///////////////////////////////////////////////////////////////////////// Camera
+	///////////////////////////////////////////////////////////////////////// Camera
 
-class Camera {
- private:
-  GLuint UboId;
-  glm::mat4 ViewMatrix;
-  glm::mat4 ProjectionMatrix;
+	class Camera {
+	private:
+		GLuint UboId;
+		GLuint BindingPoint;
+		glm::mat4 ViewMatrix;
+		glm::mat4 ProjectionMatrix;
 
- public:
-  explicit Camera(GLuint bindingpoint);
-  virtual ~Camera();
-  glm::mat4 getViewMatrix();
-  void setViewMatrix(const glm::mat4 &viewmatrix);
-  glm::mat4 getProjectionMatrix();
-  void setProjectionMatrix(const glm::mat4 &projectionmatrix);
-  float yaw = 0.0f;
-  float pitch = 0.0f;
-  void yawCamera(float angle);
-  void pitchCamera(float angle);
-  void getEulerAngles(float& yaw, float& pitch);
-};
+	public:
+		explicit Camera(GLuint bindingpoint);
+		virtual ~Camera();
+		void activate();
 
-////////////////////////////////////////////////////////////////////////////////
+		glm::mat4 getViewMatrix();
+		void setViewMatrix(const glm::mat4& viewmatrix);
+		glm::mat4 getProjectionMatrix();
+		void setProjectionMatrix(const glm::mat4& projectionmatrix);
+
+		float yaw = 0.0f;
+		float pitch = 0.0f;
+		void yawCamera(float angle);
+		void pitchCamera(float angle);
+		void getEulerAngles(float& yaw, float& pitch);
+	};
+
+	////////////////////////////////////////////////////////////////////////////////
 }  // namespace mgl
 
 #endif /* MGL_CAMERA_HPP */

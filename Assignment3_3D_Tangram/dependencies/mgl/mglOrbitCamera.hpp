@@ -26,17 +26,17 @@ namespace mgl {
 
 	class OrbitCamera;
 
-	enum Projection {
-		PERSPECTIVE,
-		ORTHO
-	};
-
 	///////////////////////////////////////////////////////////////////////// Camera
 
 	class OrbitCamera : public mgl::Camera {
 	private:
+		char name;
+		GLuint bindingpoint;
+		glm::mat4 projections[2];
+		int projectionId = 0;
+
 		bool leftClick = false;
-		float prevXpos, prevYpos;
+		double prevXpos, prevYpos;
 		float deltaX = 0.0f, deltaY = 0.0f;
 		const float moveStep = 0.01;
 
@@ -56,14 +56,15 @@ namespace mgl {
 		glm::quat qY;
 
 	public:
-		explicit OrbitCamera(GLuint bindingpoint);
+		explicit OrbitCamera(GLuint bindingpoint, char name);
 		void setViewMatrix(glm::vec3 eye, glm::vec3 center, glm::vec3 up);
 		void setOrthoMatrix(float left, float right, float bottom, float top, float zNear, float zFar);
 		void setPerspectiveMatrix(float fovy, float aspect, float near, float far);
+		void changeProjection();
 
 		void update();
 		void cursor(double xpos, double ypos);
-		void mouseButton(int button, int action);
+		void mouseButton(GLFWwindow* win, int button, int action);
 		void scroll(double xoffset, double yoffset);
 	};
 
