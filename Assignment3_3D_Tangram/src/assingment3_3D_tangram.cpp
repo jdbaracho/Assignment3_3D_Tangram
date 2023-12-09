@@ -23,6 +23,7 @@
 class SceneNode {
 public:
     glm::mat4 transform;
+    glm::vec3 color;
     std::vector<SceneNode*> children;
     mgl::Mesh* mesh;
 
@@ -32,17 +33,18 @@ public:
         children.push_back(child);
     }
 
-    void draw(GLint modelMatrixId, const glm::mat4& parentTransform = glm::mat4(1.0f)) {
+    void draw(GLint modelMatrixId, GLint colorId, const glm::mat4& parentTransform = glm::mat4(1.0f)) {
         glm::mat4 totalTransform = parentTransform * transform;
 
         if (mesh) {
 
             glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, glm::value_ptr(totalTransform));
+            glUniform3f(colorId, color[0], color[1], color[2]);
             mesh->draw();
         }
 
         for (SceneNode* child : children) {
-            child->draw(modelMatrixId, totalTransform);
+            child->draw(modelMatrixId, colorId, totalTransform);
         }
     }
 };
@@ -67,6 +69,7 @@ private:
     int cameraId = 1;
 
     GLint ModelMatrixId;
+    GLint ColorId;
     mgl::Mesh* Mesh = nullptr;
     std::vector<mgl::Mesh*> meshes;  // Vector to store multiple meshes
 
@@ -129,10 +132,13 @@ void MyApp::createShaderPrograms() {
     }
 
     Shaders->addUniform(mgl::MODEL_MATRIX);
+    Shaders->addUniform(mgl::COLOR);
     Shaders->addUniformBlock(mgl::CAMERA_BLOCK, UBO_BP[0]);
+    
     Shaders->create();
 
     ModelMatrixId = Shaders->Uniforms[mgl::MODEL_MATRIX].index;
+    ColorId = Shaders->Uniforms[mgl::COLOR].index;
 }
 
 ///////////////////////////////////////////////////////////////////////// CAMERA
@@ -175,6 +181,7 @@ void MyApp::drawScene() {
     // Draw triangles
     SceneNode triangle1(triangleMesh);
     triangle1.transform = I;
+    triangle1.color = glm::vec3(0.0f, 0.62f, 0.65f);
     root.addChild(&triangle1);
 
     SceneNode triangle2(triangleMesh);
@@ -182,6 +189,7 @@ void MyApp::drawScene() {
     T = glm::translate(glm::vec3(-triangleHeight - hypotenuse, triangleHeight, 0.0f));
     M = T * R;
     triangle2.transform = M;
+    triangle2.color = glm::vec3(0.92f, 0.28f, 0.15f);
     root.addChild(&triangle2);
 
     SceneNode triangle3(triangleMesh);
@@ -190,6 +198,7 @@ void MyApp::drawScene() {
     T = glm::translate(glm::vec3(-2.0f * hypotenuse, side * sqrt(2), 0.0f));
     M = T * R * S;
     triangle3.transform = M;
+    triangle3.color = glm::vec3(0.43f, 0.23f, 0.75f);
     root.addChild(&triangle3);
 
     SceneNode triangle4(triangleMesh);
@@ -198,6 +207,7 @@ void MyApp::drawScene() {
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
     M = T * R * S;
     triangle4.transform = M;
+    triangle4.color = glm::vec3(0.80f, 0.05f, 0.4f);
     root.addChild(&triangle4);
 
     SceneNode triangle5(triangleMesh);
@@ -206,6 +216,7 @@ void MyApp::drawScene() {
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
     M = T * R * S;
     triangle5.transform = M;
+    triangle5.color = glm::vec3(0.06f, 0.51f, 0.95f);
     root.addChild(&triangle5);
 
 
@@ -215,6 +226,7 @@ void MyApp::drawScene() {
     T = glm::translate(glm::vec3(-triangleHeight, triangleHeight, 0.0f));
     M = T * R;
     square.transform = M;
+    square.color = glm::vec3(0.13f, 0.67f, 0.14f);
     root.addChild(&square);
 
 
@@ -224,13 +236,14 @@ void MyApp::drawScene() {
     T = glm::translate(glm::vec3(-1.5f * hypotenuse, triangleHeight, 0.0f));
     M = T * R;
     parallelogram.transform = M;
+    parallelogram.color = glm::vec3(0.99f, 0.55f, 0.0f);
     root.addChild(&parallelogram);
 
 
     Shaders->bind();
 
     // draw entire scene
-    root.draw(ModelMatrixId);
+    root.draw(ModelMatrixId, ColorId);
 
     Shaders->unbind();
 }

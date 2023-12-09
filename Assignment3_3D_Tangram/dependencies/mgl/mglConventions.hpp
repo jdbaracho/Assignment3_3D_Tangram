@@ -20,6 +20,7 @@ const char NORMAL_MATRIX[] = "NormalMatrix";
 const char VIEW_MATRIX[] = "ViewMatrix";
 const char PROJECTION_MATRIX[] = "ProjectionMatrix";
 const char TEXTURE_MATRIX[] = "TextureMatrix";
+const char COLOR[] = "Color";
 const char CAMERA_BLOCK[] = "Camera";
 
 const char POSITION_ATTRIBUTE[] = "inPosition";
