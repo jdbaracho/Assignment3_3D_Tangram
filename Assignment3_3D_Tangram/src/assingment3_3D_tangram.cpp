@@ -14,6 +14,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/matrix_interpolation.hpp>
 #include <vector>
 #include <iostream>
 
@@ -61,28 +62,45 @@ public:
     bool animate(GLint modelMatrixId, GLint colorId, bool paused, float p, float d) {
         bool ended = true;
         if (mesh) {
-            if (!paused) {
+            //if not paused, calculate current mid-animation matrix based on animation progress (p / d)
+            if (!paused) { 
                 glm::mat4 initialMatrixModel = M[SceneNode::positionId == 0 ? 2 : 0];
                 glm::mat4 finalMatrixModel = M[SceneNode::positionId];
-                float interpolation = glm::clamp(p / d, 0.0f, 1.0f);
+
+                float interpolation = glm::clamp(p / d, 0.f, 1.0f);
                 ended = interpolation == 1.0f;
+
 
                 // Linear interpolation for translation
                 glm::vec3 initialTranslation = glm::vec3(initialMatrixModel[3]);
                 glm::vec3 finalTranslation = glm::vec3(finalMatrixModel[3]);
                 glm::vec3 interpolatedTranslation = glm::mix(initialTranslation, finalTranslation, interpolation);
 
+
                 //Linear interpolation for rotation
-                glm::quat initialRotation = glm::quat_cast(initialMatrixModel);
-                glm::quat finalRotation = glm::quat_cast(finalMatrixModel);
-                glm::quat interpolatedRotation = glm::slerp(initialRotation, finalRotation, interpolation);
+                glm::mat3 initialRotationMatrix = glm::mat3(initialMatrixModel);
+                glm::mat3 finalRotationMatrix = glm::mat3(finalMatrixModel);
+
+                // Normalize the columns to remove scaling effects
+                for (int i = 0; i < 3; ++i) {
+                    initialRotationMatrix[i] = glm::normalize(initialRotationMatrix[i]);
+                    finalRotationMatrix[i] = glm::normalize(finalRotationMatrix[i]);
+                }
+                glm::quat initialRotation = glm::quat_cast(initialRotationMatrix);
+                glm::quat finalRotation = glm::quat_cast(finalRotationMatrix);
+                glm::quat interpolatedRotation = glm::lerp(initialRotation, finalRotation, interpolation);
+
+
+                // Linear interpolation for scaling. Scaling doesnt change so we can just use initial scale
+                glm::vec3 initialScale = glm::vec3(glm::length(initialMatrixModel[0]), glm::length(initialMatrixModel[1]), glm::length(initialMatrixModel[2]));
+
 
                 // Update the model matrix
-                M[1] = glm::translate(interpolatedTranslation) * glm::mat4_cast(interpolatedRotation);
-
+                M[1] = glm::translate(interpolatedTranslation) * glm::mat4_cast(interpolatedRotation) * glm::scale(initialScale);
 
                 draw(modelMatrixId, colorId, glm::mat4(1.0f), shaders, true);
             }
+            //if paused, no need to update the mid-animation matrix
             else {
                 ended = false;
                 draw(modelMatrixId, colorId, glm::mat4(1.0f), shaders, true);
@@ -91,7 +109,7 @@ public:
 
         // animate/draw whole scene
         for (SceneNode* child : children) {
-            ended = child->animate(modelMatrixId, colorId, paused, p, d);
+            ended = child->animate(modelMatrixId, colorId, paused, p, d) and ended;
         }
 
         return ended;
@@ -314,6 +332,7 @@ void MyApp::drawScene() {
     R = glm::rotate(glm::radians(135.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-2.0f * hypotenuse, side * sqrt(2), 0.0f));
     M = T * R * S;
+    glm::quat ads = glm::quat_cast(R);
     triangle3.addPosition(0, M);
     if (SceneNode::positionId == 0) {
         triangle3.addPosition(1, M);
