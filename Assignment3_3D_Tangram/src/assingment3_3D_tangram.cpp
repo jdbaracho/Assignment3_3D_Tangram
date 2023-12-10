@@ -66,20 +66,20 @@ public:
                 glm::mat4 finalMatrixModel = M[SceneNode::positionId];
                 float interpolation = glm::clamp(p / d, 0.0f, 1.0f);
                 ended = interpolation == 1.0f;
-                float easedInterpolation = glm::smoothstep(0.0f, 1.0f, interpolation);
 
                 // Linear interpolation for translation
-                glm::vec3 initialTranslation = glm::vec3(M[1][3]);
+                glm::vec3 initialTranslation = glm::vec3(initialMatrixModel[3]);
                 glm::vec3 finalTranslation = glm::vec3(finalMatrixModel[3]);
-                glm::vec3 interpolatedTranslation = glm::mix(initialTranslation, finalTranslation, easedInterpolation);
+                glm::vec3 interpolatedTranslation = glm::mix(initialTranslation, finalTranslation, interpolation);
 
                 //Linear interpolation for rotation
-                glm::quat initialRotation = glm::quat_cast(M[1]);
+                glm::quat initialRotation = glm::quat_cast(initialMatrixModel);
                 glm::quat finalRotation = glm::quat_cast(finalMatrixModel);
-                glm::quat interpolatedRotation = glm::lerp(initialRotation, finalRotation, easedInterpolation);
+                glm::quat interpolatedRotation = glm::slerp(initialRotation, finalRotation, interpolation);
 
                 // Update the model matrix
-                M[1] = glm::translate(glm::mat4(1.0f), interpolatedTranslation) * glm::mat4_cast(interpolatedRotation);
+                M[1] = glm::translate(interpolatedTranslation) * glm::mat4_cast(interpolatedRotation);
+
 
                 draw(modelMatrixId, colorId, glm::mat4(1.0f), shaders, true);
             }
