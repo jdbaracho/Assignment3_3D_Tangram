@@ -57,8 +57,6 @@ public:
             shaders->unbind();
         }
 
-        if (mesh) return;
-
         for (SceneNode* child : children) {
             child->draw(modelMatrixId, colorId, totalTransform, shaders);
         }
@@ -104,8 +102,6 @@ public:
 
         M[1] = glm::translate(currentTranslation) * glm::toMat4(currentRotation) * glm::scale(currentScale);
 
-        if (mesh) return;
-
         for (SceneNode* child : children) {
             child->update(pressedKeys);
         }
@@ -113,7 +109,6 @@ public:
 
     void addPosition(int pos, glm::mat4 m) {
         M[pos] = m;
-        if (pos == 0) M[1] = m;
     }
 };
 
@@ -249,6 +244,7 @@ void MyApp::createScene() {
     root = SceneNode(nullptr, Shaders);
     M = I;
     root.addPosition(0, M);
+    root.addPosition(1, M);
     root.addPosition(2, M);
 
     // Draw triangles
