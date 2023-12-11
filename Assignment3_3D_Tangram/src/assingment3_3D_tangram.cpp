@@ -39,13 +39,19 @@ public:
     std::vector<SceneNode*> children;
     mgl::Mesh* mesh;
 
-    SceneNode(mgl::Mesh* mesh, mgl::ShaderProgram* shaders) : shaders(shaders), mesh(mesh) { }
+    void setShader(mgl::ShaderProgram* s) {
+        shaders = s;
+    }
+
+    void setMesh(mgl::Mesh* m) {
+        mesh = m;
+    }
 
     void addChild(SceneNode* child) {
         children.push_back(child);
     }
 
-    void draw(GLint modelMatrixId, GLint colorId, const glm::mat4& parentTransform = glm::mat4(1.0f), mgl::ShaderProgram* parentShader = nullptr, bool animate = false) {
+    void draw(GLint modelMatrixId, GLint colorId, const glm::mat4& parentTransform = glm::mat4(1.0f), mgl::ShaderProgram* parentShader = nullptr) {
         glm::mat4 totalTransform = parentTransform * M[1];
 
         if (mesh) {
@@ -128,7 +134,14 @@ private:
     mgl::ShaderProgram* Shaders = nullptr;
 
     //  root node for the scene
-    SceneNode root = SceneNode(nullptr, nullptr);
+    SceneNode root = SceneNode();
+    SceneNode triangle1 = SceneNode();
+    SceneNode triangle2 = SceneNode();
+    SceneNode triangle3 = SceneNode();
+    SceneNode triangle4 = SceneNode();
+    SceneNode triangle5 = SceneNode();
+    SceneNode square = SceneNode();
+    SceneNode parallelogram = SceneNode();
 
     const GLuint UBO_BP[2] = { 0, 1 };
     mgl::OrbitCamera* Cameras[2] = { nullptr, nullptr };
@@ -136,7 +149,6 @@ private:
 
     GLint ModelMatrixId;
     GLint ColorId;
-    mgl::Mesh* Mesh = nullptr;
     std::vector<mgl::Mesh*> meshes;  // Vector to store multiple meshes
 
     bool pressedKeys[GLFW_KEY_LAST];
@@ -241,14 +253,15 @@ void MyApp::createScene() {
     float hypotenuse = sqrt(2 * pow(side, 2));
     float triangleHeight = hypotenuse / 2;
 
-    root = SceneNode(nullptr, Shaders);
+    root.setShader(Shaders);
     M = I;
     root.addPosition(0, M);
     root.addPosition(1, M);
     root.addPosition(2, M);
 
     // Draw triangles
-    SceneNode triangle1(triangleMesh, Shaders);
+    triangle1.setShader(Shaders);
+    triangle1.setMesh(triangleMesh);
     triangle1.addPosition(0, M); // set box matrix model
     triangle1.addPosition(1, M); // set animation matrix equal to initial position matrix model
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1));
@@ -258,7 +271,8 @@ void MyApp::createScene() {
     triangle1.color = glm::vec3(0.0f, 0.62f, 0.65f);
     root.addChild(&triangle1);
 
-    SceneNode triangle2(triangleMesh, Shaders);
+    triangle2.setShader(Shaders);
+    triangle2.setMesh(triangleMesh);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-triangleHeight - hypotenuse, triangleHeight, 0.0f));
     M = T * R;
@@ -271,7 +285,8 @@ void MyApp::createScene() {
     triangle2.color = glm::vec3(0.92f, 0.28f, 0.15f);
     root.addChild(&triangle2);
 
-    SceneNode triangle3(triangleMesh, Shaders);
+    triangle3.setShader(Shaders);
+    triangle3.setMesh(triangleMesh);
     S = glm::scale(glm::vec3(sqrt(2), sqrt(2), 1));
     R = glm::rotate(glm::radians(135.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-2.0f * hypotenuse, side * sqrt(2), 0.0f));
@@ -286,7 +301,8 @@ void MyApp::createScene() {
     triangle3.color = glm::vec3(0.43f, 0.23f, 0.75f);
     root.addChild(&triangle3);
 
-    SceneNode triangle4(triangleMesh, Shaders);
+    triangle4.setShader(Shaders);
+    triangle4.setMesh(triangleMesh);
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
@@ -300,7 +316,8 @@ void MyApp::createScene() {
     triangle4.color = glm::vec3(0.80f, 0.05f, 0.4f);
     root.addChild(&triangle4);
 
-    SceneNode triangle5(triangleMesh, Shaders);
+    triangle5.setShader(Shaders);
+    triangle5.setMesh(triangleMesh);
     S = glm::scale(glm::vec3(2, 2, 1));
     R = glm::rotate(glm::radians(180.0f), glm::vec3(1, 0, 0));
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
@@ -316,7 +333,8 @@ void MyApp::createScene() {
 
 
     // draw square
-    SceneNode square(squareMesh, Shaders);
+    square.setShader(Shaders);
+    square.setMesh(squareMesh);
     R = glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-triangleHeight, triangleHeight, 0.0f));
     M = T * R;
@@ -331,7 +349,8 @@ void MyApp::createScene() {
 
 
     // draw parallelogram
-    SceneNode parallelogram(parallelogramMesh, Shaders);
+    parallelogram.setShader(Shaders);
+    parallelogram.setMesh(parallelogramMesh);
     R = glm::rotate(glm::radians(-45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(-1.5f * hypotenuse, triangleHeight, 0.0f));
     M = T * R;
@@ -347,7 +366,7 @@ void MyApp::createScene() {
 }
 
 void MyApp::drawScene() {
-    // draw entire scene
+    // draw entire scene from root node
     root.draw(ModelMatrixId, ColorId);
 }
 
@@ -366,8 +385,6 @@ void MyApp::windowSizeCallback(GLFWwindow* win, int winx, int winy) {
 void MyApp::keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods) {
     //std::cout << "key: " << key << " " << scancode << " " << action << " " << mods << std::endl;
     pressedKeys[key] = action != GLFW_RELEASE;
-
-
 
     if (action == GLFW_RELEASE) {
         switch (key) {

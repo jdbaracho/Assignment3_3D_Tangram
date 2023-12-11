@@ -27,17 +27,6 @@
     <ClCompile Include="src\mgl\mglOrbitCamera.cpp" />
     <ClCompile Include="src\mgl\mglShader.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="dependencies\mgl\mgl.hpp" />
-    <ClInclude Include="dependencies\mgl\mglApp.hpp" />
-    <ClInclude Include="dependencies\mgl\mglCamera.hpp" />
-    <ClInclude Include="dependencies\mgl\mglConventions.hpp" />
-    <ClInclude Include="dependencies\mgl\mglError.hpp" />
-    <ClInclude Include="dependencies\mgl\mglMesh.hpp" />
-    <ClInclude Include="dependencies\mgl\mglOrbitCamera.hpp" />
-    <ClInclude Include="dependencies\mgl\mglScenegraph.hpp" />
-    <ClInclude Include="dependencies\mgl\mglShader.hpp" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
