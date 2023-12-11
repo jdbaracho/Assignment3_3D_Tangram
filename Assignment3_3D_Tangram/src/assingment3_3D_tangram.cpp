@@ -26,6 +26,8 @@
 class SceneNode {
 private:
     glm::mat4 M[3]; // three model matrices: 0 - box position, 1 - current position, and 2 - tangram shape position
+    int positionId = 0;
+
     float animationStage = 0.0f;
     float prevAnimationStage = 0.0f;
     float animationStep = 0.005f;
@@ -33,7 +35,6 @@ private:
     mgl::ShaderProgram* shaders = nullptr;
 
 public:
-    static int positionId;
     glm::vec3 color;
     std::vector<SceneNode*> children;
     mgl::Mesh* mesh;
@@ -115,8 +116,6 @@ public:
         if (pos == 0) M[1] = m;
     }
 };
-
-int SceneNode::positionId = 0;
 
 ////////////////////////////////////////////////////////////////////////// MYAPP
 
@@ -255,16 +254,11 @@ void MyApp::createScene() {
     // Draw triangles
     SceneNode triangle1(triangleMesh, Shaders);
     triangle1.addPosition(0, M); // set box matrix model
-    if (SceneNode::positionId == 0) {
-        triangle1.addPosition(1, M); // set animation matrix equal to initial position matrix model
-    }
+    triangle1.addPosition(1, M); // set animation matrix equal to initial position matrix model
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(0.0f, side, -side));
     M = T * R;
     triangle1.addPosition(2, M); // set tangram shape matrix model
-    if (SceneNode::positionId == 2) {
-        triangle1.addPosition(1, M); // set animation matrix equal to tangram shape matrix model
-    }
     triangle1.color = glm::vec3(0.0f, 0.62f, 0.65f);
     root.addChild(&triangle1);
 
@@ -273,16 +267,11 @@ void MyApp::createScene() {
     T = glm::translate(glm::vec3(-triangleHeight - hypotenuse, triangleHeight, 0.0f));
     M = T * R;
     triangle2.addPosition(0, M);
-    if (SceneNode::positionId == 0) {
-        triangle2.addPosition(1, M);
-    }
+    triangle2.addPosition(1, M);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::radians(-45.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(0.0f, 0.0f, side));
     M = T * R;
     triangle2.addPosition(2, M);
-    if (SceneNode::positionId == 2) {
-        triangle2.addPosition(1, M);
-    }
     triangle2.color = glm::vec3(0.92f, 0.28f, 0.15f);
     root.addChild(&triangle2);
 
@@ -293,16 +282,11 @@ void MyApp::createScene() {
     M = T * R * S;
     glm::quat ads = glm::quat_cast(R);
     triangle3.addPosition(0, M);
-    if (SceneNode::positionId == 0) {
-        triangle3.addPosition(1, M);
-    }
+    triangle3.addPosition(1, M);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
     T = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
     M = T * R * S;
     triangle3.addPosition(2, M);
-    if (SceneNode::positionId == 2) {
-        triangle3.addPosition(1, M);
-    }
     triangle3.color = glm::vec3(0.43f, 0.23f, 0.75f);
     root.addChild(&triangle3);
 
@@ -312,16 +296,11 @@ void MyApp::createScene() {
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
     M = T * R * S;
     triangle4.addPosition(0, M);
-    if (SceneNode::positionId == 0) {
-        triangle4.addPosition(1, M);
-    }
+    triangle4.addPosition(1, M);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
     T = glm::translate(glm::vec3(0.0f, side, 2.0f * hypotenuse));
     M = T * R * S;
     triangle4.addPosition(2, M);
-    if (SceneNode::positionId == 2) {
-        triangle4.addPosition(1, M);
-    }
     triangle4.color = glm::vec3(0.80f, 0.05f, 0.4f);
     root.addChild(&triangle4);
 
@@ -331,16 +310,11 @@ void MyApp::createScene() {
     T = glm::translate(glm::vec3(0.0f, 2.0f * hypotenuse, 0.0f));
     M = T * R * S;
     triangle5.addPosition(0, M);
-    if (SceneNode::positionId == 0) {
-        triangle5.addPosition(1, M);
-    }
+    triangle5.addPosition(1, M);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0)) * glm::rotate(glm::radians(180.0f), glm::vec3(0, 0, 1));
     T = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f * hypotenuse));
     M = T * R * S;
     triangle5.addPosition(2, M);
-    if (SceneNode::positionId == 2) {
-        triangle5.addPosition(1, M);
-    }
     triangle5.color = glm::vec3(0.06f, 0.51f, 0.95f);
     root.addChild(&triangle5);
 
@@ -351,16 +325,11 @@ void MyApp::createScene() {
     T = glm::translate(glm::vec3(-triangleHeight, triangleHeight, 0.0f));
     M = T * R;
     square.addPosition(0, M);
-    if (SceneNode::positionId == 0) {
-        square.addPosition(1, M);
-    }
+    square.addPosition(1, M);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
     T = glm::translate(glm::vec3(0.0f, 0.0f, 2.0f * hypotenuse));
     M = T * R;
     square.addPosition(2, M);
-    if (SceneNode::positionId == 2) {
-        square.addPosition(1, M);
-    }
     square.color = glm::vec3(0.13f, 0.67f, 0.14f);
     root.addChild(&square);
 
@@ -371,16 +340,11 @@ void MyApp::createScene() {
     T = glm::translate(glm::vec3(-1.5f * hypotenuse, triangleHeight, 0.0f));
     M = T * R;
     parallelogram.addPosition(0, M);
-    if (SceneNode::positionId == 0) {
-        parallelogram.addPosition(1, M);
-    }
+    parallelogram.addPosition(1, M);
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
     T = glm::translate(glm::vec3(0.0f, 0.0f, side));
     M = T * R;
     parallelogram.addPosition(2, M);
-    if (SceneNode::positionId == 2) {
-        parallelogram.addPosition(1, M);
-    }
     parallelogram.color = glm::vec3(0.99f, 0.55f, 0.0f);
     root.addChild(&parallelogram);
 
