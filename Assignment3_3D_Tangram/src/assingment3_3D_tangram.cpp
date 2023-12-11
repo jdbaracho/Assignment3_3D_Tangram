@@ -18,7 +18,6 @@
 #include <vector>
 #include <iostream>
 
-
 #include "../mgl/mgl.hpp"
 
 
@@ -26,7 +25,10 @@
 
 class SceneNode {
 private:
-    glm::mat4 M[3]; // three model matrices: 0 - box position, 1 - mid-animation position, and 2 - tangram shape position
+    glm::mat4 M[3]; // three model matrices: 0 - box position, 1 - current position, and 2 - tangram shape position
+    float animationStage = 0.0f;
+    float prevAnimationStage = 0.0f;
+    float animationStep = 0.005f;
 
     mgl::ShaderProgram* shaders = nullptr;
 
@@ -43,10 +45,10 @@ public:
     }
 
     void draw(GLint modelMatrixId, GLint colorId, const glm::mat4& parentTransform = glm::mat4(1.0f), mgl::ShaderProgram* parentShader = nullptr, bool animate = false) {
-        glm::mat4 totalTransform = parentTransform * (animate ? M[1] : M[SceneNode::positionId]);
+        glm::mat4 totalTransform = parentTransform * M[1];
 
         if (mesh) {
-            if (!shaders) { shaders = parentShader;  }
+            if (!shaders) { shaders = parentShader; }
             shaders->bind();
             glUniformMatrix4fv(modelMatrixId, 1, GL_FALSE, glm::value_ptr(totalTransform));
             glUniform3f(colorId, color[0], color[1], color[2]);
@@ -54,69 +56,63 @@ public:
             shaders->unbind();
         }
 
+        if (mesh) return;
+
         for (SceneNode* child : children) {
             child->draw(modelMatrixId, colorId, totalTransform, shaders);
         }
     }
 
-    bool animate(GLint modelMatrixId, GLint colorId, bool paused, float p, float d) {
-        bool ended = true;
-        if (mesh) {
-            //if not paused, calculate current mid-animation matrix based on animation progress (p / d)
-            if (!paused) { 
-                glm::mat4 initialMatrixModel = M[SceneNode::positionId == 0 ? 2 : 0];
-                glm::mat4 finalMatrixModel = M[SceneNode::positionId];
-
-                float interpolation = glm::clamp(p / d, 0.f, 1.0f);
-                ended = interpolation == 1.0f;
-
-
-                // Linear interpolation for translation
-                glm::vec3 initialTranslation = glm::vec3(initialMatrixModel[3]);
-                glm::vec3 finalTranslation = glm::vec3(finalMatrixModel[3]);
-                glm::vec3 interpolatedTranslation = glm::mix(initialTranslation, finalTranslation, interpolation);
-
-
-                //Linear interpolation for rotation
-                glm::mat3 initialRotationMatrix = glm::mat3(initialMatrixModel);
-                glm::mat3 finalRotationMatrix = glm::mat3(finalMatrixModel);
-
-                // Normalize the columns to remove scaling effects
-                for (int i = 0; i < 3; ++i) {
-                    initialRotationMatrix[i] = glm::normalize(initialRotationMatrix[i]);
-                    finalRotationMatrix[i] = glm::normalize(finalRotationMatrix[i]);
-                }
-                glm::quat initialRotation = glm::quat_cast(initialRotationMatrix);
-                glm::quat finalRotation = glm::quat_cast(finalRotationMatrix);
-                glm::quat interpolatedRotation = glm::lerp(initialRotation, finalRotation, interpolation);
-
-
-                // Linear interpolation for scaling. Scaling doesnt change so we can just use initial scale
-                glm::vec3 initialScale = glm::vec3(glm::length(initialMatrixModel[0]), glm::length(initialMatrixModel[1]), glm::length(initialMatrixModel[2]));
-
-
-                // Update the model matrix
-                M[1] = glm::translate(interpolatedTranslation) * glm::mat4_cast(interpolatedRotation) * glm::scale(initialScale);
-
-                draw(modelMatrixId, colorId, glm::mat4(1.0f), shaders, true);
-            }
-            //if paused, no need to update the mid-animation matrix
-            else {
-                ended = false;
-                draw(modelMatrixId, colorId, glm::mat4(1.0f), shaders, true);
-            }
+    void update(bool* pressedKeys) {
+        if (pressedKeys[GLFW_KEY_LEFT]) {
+            animationStage -= animationStep;
         }
+        if (pressedKeys[GLFW_KEY_RIGHT]) {
+            animationStage += animationStep;
+        }
+        animationStage = glm::clamp(animationStage, 0.0f, 1.0f);
 
-        // animate/draw whole scene
+        if (animationStage == prevAnimationStage) {
+            prevAnimationStage = animationStage;
+            return;
+        }
+        prevAnimationStage = animationStage;
+
+        //Linear interpolation for translation
+        glm::vec3 initialTranslation = glm::vec3(M[0][3]);
+        glm::vec3 finalTranslation = glm::vec3(M[2][3]);
+        glm::vec3 currentTranslation = glm::mix(initialTranslation, finalTranslation, animationStage);
+
+
+        //Linear interpolation for rotation
+        glm::mat3 initialRotationMatrix = glm::mat3(M[0]);
+        glm::mat3 finalRotationMatrix = glm::mat3(M[2]);
+
+        // Normalize the columns to remove scaling effects
+        for (int i = 0; i < 3; ++i) {
+            initialRotationMatrix[i] = glm::normalize(initialRotationMatrix[i]);
+            finalRotationMatrix[i] = glm::normalize(finalRotationMatrix[i]);
+        }
+        glm::quat initialRotation = glm::quat_cast(initialRotationMatrix);
+        glm::quat finalRotation = glm::quat_cast(finalRotationMatrix);
+        glm::quat currentRotation = glm::lerp(initialRotation, finalRotation, animationStage);
+
+
+        // Linear interpolation for scaling. Scaling doesnt change so we can just use initial scale
+        glm::vec3 currentScale = glm::vec3(glm::length(M[0][0]), glm::length(M[0][1]), glm::length(M[0][2]));
+
+        M[1] = glm::translate(currentTranslation) * glm::toMat4(currentRotation) * glm::scale(currentScale);
+
+        if (mesh) return;
+
         for (SceneNode* child : children) {
-            ended = child->animate(modelMatrixId, colorId, paused, p, d) and ended;
+            child->update(pressedKeys);
         }
-
-        return ended;
     }
 
     void addPosition(int pos, glm::mat4 m) {
         M[pos] = m;
+        if (pos == 0) M[1] = m;
     }
 };
 
@@ -149,23 +145,13 @@ private:
     mgl::Mesh* Mesh = nullptr;
     std::vector<mgl::Mesh*> meshes;  // Vector to store multiple meshes
 
-    float animationDuration = 3.0f; 
-    float currentTime = 0.0f;
-    bool isAnimating = false;
-    bool isPaused = false;
-
     bool pressedKeys[GLFW_KEY_LAST];
 
     void createMeshes();
     void createShaderPrograms();
     void createCamera();
+    void createScene();
     void drawScene();
-
-    // Animation functions
-    void startAnimation();
-    void pauseAnimation();
-    void stopAnimation();
-    void updateAnimation(float deltaTime);
 };
 
 ///////////////////////////////////////////////////////////////////////// MESHES
@@ -221,7 +207,7 @@ void MyApp::createShaderPrograms() {
     Shaders->addUniform(mgl::MODEL_MATRIX);
     Shaders->addUniform(mgl::COLOR);
     Shaders->addUniformBlock(mgl::CAMERA_BLOCK, UBO_BP[0]);
-    
+
     Shaders->create();
 
     ModelMatrixId = Shaders->Uniforms[mgl::MODEL_MATRIX].index;
@@ -244,33 +230,6 @@ void MyApp::createCamera() {
     Cameras[1]->setPerspectiveMatrix(30.0f, 800.0f / 600.0f, 1.0f, 10.0f);
 }
 
-///////////////////////////////////////////////////////////////////////// ANIMATION
-
-void MyApp::startAnimation() {
-    isAnimating = true;
-    isPaused = false;
-}
-
-void MyApp::pauseAnimation() {
-    isPaused = true;
-}
-
-void MyApp::stopAnimation() {
-    currentTime = 0.0f;
-    isAnimating = false;
-    isPaused = false;
-}
-
-void MyApp::updateAnimation(float deltaTime) {
-    if (!isPaused) {
-        currentTime += deltaTime;
-    }
-    bool ended = root.animate(ModelMatrixId, ColorId, isPaused, currentTime, animationDuration);
-    if (ended) {
-        stopAnimation();
-    }
-}
-
 /////////////////////////////////////////////////////////////////////////// DRAW
 
 glm::mat4 I(1.0f);
@@ -279,14 +238,14 @@ glm::mat4 R;
 glm::mat4 T;
 glm::mat4 M;
 
-void MyApp::drawScene() {
+void MyApp::createScene() {
 
     mgl::Mesh* triangleMesh = meshes[0];
     mgl::Mesh* squareMesh = meshes[1];
     mgl::Mesh* parallelogramMesh = meshes[2];
     float side = 0.5f;
-    float hypotenuse = sqrt(2*pow(side, 2));
-    float triangleHeight = hypotenuse/2;
+    float hypotenuse = sqrt(2 * pow(side, 2));
+    float triangleHeight = hypotenuse / 2;
 
     root = SceneNode(nullptr, Shaders);
     M = I;
@@ -357,7 +316,7 @@ void MyApp::drawScene() {
         triangle4.addPosition(1, M);
     }
     R = glm::rotate(glm::radians(-90.0f), glm::vec3(0, 1, 0));
-    T = glm::translate(glm::vec3(0.0f, side, 2.0f*hypotenuse));
+    T = glm::translate(glm::vec3(0.0f, side, 2.0f * hypotenuse));
     M = T * R * S;
     triangle4.addPosition(2, M);
     if (SceneNode::positionId == 2) {
@@ -425,6 +384,9 @@ void MyApp::drawScene() {
     parallelogram.color = glm::vec3(0.99f, 0.55f, 0.0f);
     root.addChild(&parallelogram);
 
+}
+
+void MyApp::drawScene() {
     // draw entire scene
     root.draw(ModelMatrixId, ColorId);
 }
@@ -435,15 +397,17 @@ void MyApp::initCallback(GLFWwindow* win) {
     createMeshes();
     createShaderPrograms();  // after mesh;
     createCamera();
+    createScene();
 }
 void MyApp::windowSizeCallback(GLFWwindow* win, int winx, int winy) {
     glViewport(0, 0, 800, 600);
-    //glViewport(0, 0, 640, 480);
 }
 
 void MyApp::keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods) {
     //std::cout << "key: " << key << " " << scancode << " " << action << " " << mods << std::endl;
     pressedKeys[key] = action != GLFW_RELEASE;
+
+
 
     if (action == GLFW_RELEASE) {
         switch (key) {
@@ -455,50 +419,14 @@ void MyApp::keyCallback(GLFWwindow* win, int key, int scancode, int action, int 
         case GLFW_KEY_P:
             Cameras[cameraId]->changeProjection();
             break;
-
-        case GLFW_KEY_LEFT:
-        case GLFW_KEY_RIGHT:
-            pauseAnimation();
-            break;
         }
     }
-    else if (pressedKeys[key]) {
-        switch (key) {
-        case GLFW_KEY_LEFT:
-            if (isAnimating or SceneNode::positionId != 0) {
-                if (SceneNode::positionId != 0 && currentTime > 0.0f) {
-                    currentTime = animationDuration - currentTime; // reverse animation time
-                }
-                SceneNode::positionId = 0;
-                startAnimation();
-            }
-            break;
-        case GLFW_KEY_RIGHT:
-            if (isAnimating or SceneNode::positionId != 2) {
-                if (SceneNode::positionId != 2 && currentTime > 0.0f) {
-                    currentTime = animationDuration - currentTime; // reverse animation time
-                }
-                SceneNode::positionId = 2;
-                startAnimation();
-            }
-            break;
-        }
-    }
-
-    //if (key == GLFW_KEY_C && action == GLFW_RELEASE) {
-    //    cameraId = (cameraId + 1) % 2;
-    //    Cameras[cameraId]->activate();
-    //}
 }
 
 void MyApp::displayCallback(GLFWwindow* win, double elapsed) {
     Cameras[cameraId]->update();
-    if (isAnimating) {
-        updateAnimation(elapsed);
-    }
-    else {
-        drawScene();
-    }
+    root.update(pressedKeys);
+    drawScene();
 }
 
 void MyApp::cursorCallback(GLFWwindow* win, double xpos, double ypos) {
